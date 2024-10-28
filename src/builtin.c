@@ -55,7 +55,18 @@ int help(char **args)
 // ======================= requirement 2.1 =======================
 int cd(char **args)
 {
-	return 1;
+	char path[100];
+	//沒有輸入則回到hmoe
+	if (args[1] == NULL) {
+		strcpy(path, getenv("HOME"));
+	}else {
+		strcpy(path, args[1]);
+	}
+	if(chdir(path) == -1) {
+		perror("Error");
+		exit(EXIT_FAILURE);
+	}
+	exit(EXIT_SUCCESS);
 }
 // ===============================================================
 

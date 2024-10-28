@@ -37,6 +37,28 @@ void redirection(struct cmd_node *p){
  */
 int spawn_proc(struct cmd_node *p)
 {
+	pid_t pid;
+
+	if(signal(SIDCHID,SIG_IGN)==SIG_ERR) {
+		perror("signal");
+		return -1;
+	}
+
+	pid = fork();
+	switch(pid) {
+		case -1:
+			perror("fork");
+		return -1;
+		case 0:
+			char **cmd = p->args;
+			int ret = execvp(cmd[0],cmd);
+			if(ret==-1) {
+				perror("execvp");
+			}
+		    return 0;
+		default:
+			return 1;
+	}
   	return 1;
 }
 // ===============================================================
