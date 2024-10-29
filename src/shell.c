@@ -20,7 +20,50 @@
  * 
  */
 void redirection(struct cmd_node *p){
-	
+	//先開一個子程序
+	pid_t pid = fork();
+	//子程序失敗，彈出訊息
+	if (pid < 0) {
+		perror("Fork failed");
+		return -1;
+	} else if (pid == 0) {
+		//先確認指令有無I/O
+		if (p->in_file) {
+			//INPUT開啟一個fd
+			int in_fd = open(p->in_file, O_RDONLY);
+			if (in_fd < 0) {
+				perror("Error opening input file");
+				exit(EXIT_FAILURE);
+			}
+			//將該檔案的fd指向標準輸入
+			dup2(in_fd, STDIN_FILENO);
+			close(in_fd);
+		}
+		//先確認有無I/O
+		if (p->out_file) {
+			//開啟一個fd
+			int out_fd = creat(p->out_file, 0644);
+			if (out_fd < 0) {
+				perror("Error opening output file");
+				exit(EXIT_FAILURE);
+			}
+			//fd指向標準輸出
+			dup2(out_fd, STDOUT_FILENO);
+			close(out_fd);
+		}
+		//透過execvp替換掉當前的程序，讓新的程序接管。
+		execvp(p->args[0], p->args);
+		perror("execvp failed");  // Only reached if execvp fails
+		exit(EXIT_FAILURE);
+	} else { //父程序等待子程序完成
+		int status;
+		waitpid(pid, &status, 0);  // Wait for child process to complete
+		if (WIFEXITED(status)) {
+			return 1;
+		} else {
+			return -1;  // Return -1 if the child didn't exit normally
+		}
+	}
 }
 // ===============================================================
 
@@ -44,31 +87,6 @@ int spawn_proc(struct cmd_node *p)
 		perror("Fork failed");
 		return -1;
 	} else if (pid == 0) {
-		//先確認指令有無I/O
-		/*
-		if (p->in_file) {
-			//INPUT開啟一個fd
-			int in_fd = open(p->in_file, O_RDONLY);
-			if (in_fd < 0) {
-				perror("Error opening input file");
-				exit(EXIT_FAILURE);
-			}
-			//將該檔案的fd指向標準輸入
-			dup2(in_fd, STDIN_FILENO);
-			close(in_fd);
-		}
-		//先確認有無I/O
-		if (p->out_file) {
-			//開啟一個fd
-			int out_fd = creat(p->out_file, 0644);
-			if (out_fd < 0) {
-				perror("Error opening output file");
-				exit(EXIT_FAILURE);
-			}
-			//fd指向標準輸出
-			dup2(out_fd, STDOUT_FILENO);
-			close(out_fd);
-		}*/
 		//透過execvp替換掉當前的程序，讓新的程序接管。
 		execvp(p->args[0], p->args);
 		perror("execvp failed");  // Only reached if execvp fails
