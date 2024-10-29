@@ -56,15 +56,19 @@ int help(char **args)
 int cd(char **args)
 {
 	// 檢查 args 是否為 NULL 或 args[1] 是否為 NULL
-	if (args == NULL || args[1] == NULL) {
-		fprintf(stderr, "cd: missing argument\n");
+	//if (args == NULL || args[1] == NULL) {
+	//	fprintf(stderr, "cd: missing argument\n");
+	//}
+	//沒有參數回到home
+	if(args[1] == NULL) {
+		if(chdir(getenv("HOME"))!=0) {
+			perror("cd");
+		};
 	}
-
 	// 使用 chdir 改變目錄，若失敗則顯示錯誤訊息
 	if (chdir(args[1]) != 0) {
 		perror("cd");
 	}
-
 	return 1;
 }
 // ===============================================================
