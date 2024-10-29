@@ -55,18 +55,17 @@ int help(char **args)
 // ======================= requirement 2.1 =======================
 int cd(char **args)
 {
-	char path[100];
-	//沒有輸入則回到hmoe
-	if (args[1] == NULL) {
-		strcpy(path, getenv("HOME"));
-	}else {
-		strcpy(path, args[1]);
+	// 檢查 args 是否為 NULL 或 args[1] 是否為 NULL
+	if (args == NULL || args[1] == NULL) {
+		fprintf(stderr, "cd: missing argument\n");
 	}
-	if(chdir(path) == -1) {
-		perror("Error");
-		exit(EXIT_FAILURE);
+
+	// 使用 chdir 改變目錄，若失敗則顯示錯誤訊息
+	if (chdir(args[1]) != 0) {
+		perror("cd");
 	}
-	exit(EXIT_SUCCESS);
+
+	return 1;
 }
 // ===============================================================
 

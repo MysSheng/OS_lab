@@ -37,29 +37,46 @@ void redirection(struct cmd_node *p){
  */
 int spawn_proc(struct cmd_node *p)
 {
-	pid_t pid;
-
-	if(signal(SIDCHID,SIG_IGN)==SIG_ERR) {
-		perror("signal");
+	pid_t pid = fork();
+	if (pid < 0) {
+		perror("Fork failed");
 		return -1;
-	}
-
-	pid = fork();
-	switch(pid) {
-		case -1:
-			perror("fork");
-		return -1;
-		case 0:
-			char **cmd = p->args;
-			int ret = execvp(cmd[0],cmd);
-			if(ret==-1) {
-				perror("execvp");
+	} else if (pid == 0) {  // Child process
+		// Input redirection
+		if (p->in_file) {
+			int in_fd = open(p->in_file, O_RDONLY);
+			if (in_fd < 0) {
+				perror("Error opening input file");
+				exit(EXIT_FAILURE);
 			}
-		    return 0;
-		default:
-			return 1;
+			dup2(in_fd, STDIN_FILENO);
+			close(in_fd);
+		}
+
+		// Output redirection
+		if (p->out_file) {
+			int out_fd = open(p->out_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+			if (out_fd < 0) {
+				perror("Error opening output file");
+				exit(EXIT_FAILURE);
+			}
+			dup2(out_fd, STDOUT_FILENO);
+			close(out_fd);
+		}
+
+		// Execute command
+		execvp(p->args[0], p->args);
+		perror("execvp failed");  // Only reached if execvp fails
+		exit(EXIT_FAILURE);
+	} else {  // Parent process
+		int status;
+		waitpid(pid, &status, 0);  // Wait for child process to complete
+		if (WIFEXITED(status)) {
+			return WEXITSTATUS(status);
+		} else {
+			return -1;  // Return -1 if the child didn't exit normally
+		}
 	}
-  	return 1;
 }
 // ===============================================================
 
