@@ -67,6 +67,10 @@ int spawn_proc(struct cmd_node *p)
 		perror("Fork failed");
 		return -1;
 	} else if (pid == 0) {
+		//確認是否redirection
+		if(p->in_file||p->out_file) {
+			redirection(p);
+		}
 		//透過execvp替換掉當前的程序，讓新的程序接管。
 		execvp(p->args[0], p->args);
 		perror("execvp failed");  // Only reached if execvp fails
