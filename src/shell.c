@@ -128,8 +128,9 @@ int fork_cmd_node(struct cmd *cmd)
 			}
 			index1 = j-2;
 		}
-		close(fd[index0]);
-		close(fd[index1]);
+		for (int i = 0; i < 2 * cmd_num; i++) {
+			close(fd[i]);
+		}
 		//執行指令
 		spawn_proc(current);
 		current = current->next;
