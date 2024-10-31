@@ -99,30 +99,29 @@ int spawn_proc(struct cmd_node *p)
  */
 int fork_cmd_node(struct cmd *cmd)
 {
-	//給pipe分配通道
-	int fd[2];
-	pid_t pid;
-	int last_status=0;
+	int fds[2],i=cmd->pipe_num;
+	pid_t pid ;
 	struct cmd_node *current=cmd->head;
-
+	//先開好一個pipe
+	if(pipe(fds)<0) {
+		perror("pipe failed");
+		return -1;
+	}
 	while(current!=NULL) {
-		pid=fork();
-		if (pid < 0) {
-			perror("Fork failed");
-			exit(EXIT_FAILURE);
-		}else if (pid == 0) {
-			//子程序
-			dup2(last_status, STDIN_FILENO);
-			if(current->next!=NULL) {
-				dup2(fd[1], STDOUT_FILENO);
-			}
-			close(fd[0]);
-			execvp(current->args[0], current->args);
-			exit(EXIT_FAILURE);
+		pid =fork();
+		if(pid < 0) {
+			perror("fork failed");
+			return -1;
+		} else if(pid == 0) {
+			dup2(fds[0],STDIN_FILENO);
+			close(fds[1]);
+			close(fds[0]);
+			spawn_proc(current);
 		}else {
-			wait(NULL); 		/* Collect childs */
-			close(fd[1]);
-			last_status = fd[0];
+			int status;
+			dup2(fds[1],STDOUT_FILENO);
+			close(fds[0]);
+			close(fds[1]);
 			current=current->next;
 		}
 	}
