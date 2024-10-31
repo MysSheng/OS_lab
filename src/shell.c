@@ -99,44 +99,64 @@ int spawn_proc(struct cmd_node *p)
  */
 int fork_cmd_node(struct cmd *cmd)
 {
-	size_t i,n=cmd->pipe_num;
-	int prev_pipe=STDIN_FILENO, fds[2];
+	int i, j = 0;
+	pid_t pid;
+	int cmd_len = cmd->pipe_num;
+	int fd[2 * cmd_len];
 	struct cmd_node *current=cmd->head;
 
-	for (i = 0; i < n - 1; i++) {
-		pipe(fds);
-		if (fork() == 0) {
-			// Redirect previous pipe to stdin
-			if (prev_pipe != STDIN_FILENO) {
-				dup2(prev_pipe, STDIN_FILENO);
-				close(prev_pipe);
-			}
-			// Redirect stdout to current pipe
-			dup2(fds[1], STDOUT_FILENO);
-			close(fds[1]);
-			// Start command
-			spawn_proc(current);
-			current=current->next;
-			perror("execvp failed");
-			exit(1);
+	// pipe(2) for cmd_len times
+	for (i = 0; i < cmd_len; i++) {
+		if (pipe(fd + i * 2) < 0) {
+			perror("couldn't pipe");
+			exit(EXIT_FAILURE);
 		}
-		// Close read end of previous pipe (not needed in the parent)
-		close(prev_pipe);
-		// Close write end of current pipe (not needed in the parent)
-		close(fds[1]);
-		// Save read end of current pipe to use in next iteration
-		prev_pipe = fds[0];
 	}
-	// Get stdin from last pipe
-	if (prev_pipe != STDIN_FILENO) {
-		dup2(prev_pipe, STDIN_FILENO);
-		close(prev_pipe);
-	}
-	// Start last command
-	spawn_proc(current);
-	perror("execvp failed");
-	exit(1);
+	while (*cmd != NULL) {
+		if ((pid = fork()) == -1) {
+			perror("fork");
+			exit(1);
+		} else if (pid == 0) {
+			// if there is next
+			if (current->next != NULL) {
+				if (dup2(fd[j + 1], 1) < 0) {
+					perror("dup2");
+					exit(EXIT_FAILURE);
+				}
+			}
+			// if there is previous
+			if (j != 0) {
+				if (dup2(fd[j - 2], 0) < 0) {
+					perror("dup2");
+					exit(EXIT_FAILURE);
+				}
+			}
 
+			for (i = 0; i < 2 * cmd_len; i++) {
+				close(fd[i]);
+			}
+
+			if (execvp(current->args[0], current->args) < 0) {
+				perror((current->args[0]));
+				exit(EXIT_FAILURE);
+			}
+		} else if (pid < 0) {
+			perror("error");
+			exit(EXIT_FAILURE);
+		}
+
+		// no wait in each process,
+		// because I want children to exec without waiting for each other
+		// as bash does.
+		cmd++;
+		j += 2;
+	}
+	// close fds in parent process
+	for (i = 0; i < 2 * cmd_len; i++) {
+		close(fd[i]);
+	}
+	// wait for children
+	for (i = 0; i < cmd_len; i++) wait(NULL);
 }
 // ===============================================================
 
