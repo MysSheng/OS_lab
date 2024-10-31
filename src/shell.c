@@ -99,32 +99,43 @@ int spawn_proc(struct cmd_node *p)
  */
 int fork_cmd_node(struct cmd *cmd)
 {
-	int fds[2],i=cmd->pipe_num;
-	pid_t pid ;
+	size_t i,n=cmd->pipe_num;
+	int prev_pipe=STDIN_FILENO, fds[2];
 	struct cmd_node *current=cmd->head;
-	//先開好一個pipe
-	if(pipe(fds)<0) {
-		perror("pipe failed");
-		return -1;
-	}
-	while(current!=NULL) {
-		pid =fork();
-		if(pid < 0) {
-			perror("fork failed");
-			return -1;
-		} else if(pid == 0) {
-			dup2(fds[0],STDIN_FILENO);
+
+	for (i = 0; i < n - 1; i++) {
+		pipe(fds);
+		if (fork() == 0) {
+			// Redirect previous pipe to stdin
+			if (prev_pipe != STDIN_FILENO) {
+				dup2(prev_pipe, STDIN_FILENO);
+				close(prev_pipe);
+			}
+			// Redirect stdout to current pipe
+			dup2(fds[1], STDOUT_FILENO);
 			close(fds[1]);
-			close(fds[0]);
+			// Start command
 			spawn_proc(current);
-		}else {
-			int status;
-			dup2(fds[1],STDOUT_FILENO);
-			close(fds[0]);
-			close(fds[1]);
 			current=current->next;
+			perror("execvp failed");
+			exit(1);
 		}
+		// Close read end of previous pipe (not needed in the parent)
+		close(prev_pipe);
+		// Close write end of current pipe (not needed in the parent)
+		close(fds[1]);
+		// Save read end of current pipe to use in next iteration
+		prev_pipe = fds[0];
 	}
+	// Get stdin from last pipe
+	if (prev_pipe != STDIN_FILENO) {
+		dup2(prev_pipe, STDIN_FILENO);
+		close(prev_pipe);
+	}
+	// Start last command
+	spawn_proc(current);
+	perror("execvp failed");
+	exit(1);
 
 }
 // ===============================================================
