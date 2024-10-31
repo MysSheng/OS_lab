@@ -148,7 +148,7 @@ int fork_cmd_node(struct cmd *cmd)
 		// no wait in each process,
 		// because I want children to exec without waiting for each other
 		// as bash does.
-		cmd++;
+		current = current->next;
 		j += 2;
 	}
 	// close fds in parent process
