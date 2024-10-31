@@ -99,63 +99,38 @@ int spawn_proc(struct cmd_node *p)
  */
 int fork_cmd_node(struct cmd *cmd)
 {
-	int i, j = 0;
-	pid_t pid;
-	int cmd_len = cmd->pipe_num;
-	int fd[2 * cmd_len];
+	int j = 0;
+	int fd[2];
 	struct cmd_node *current=cmd->head;
-
-	//先開好n個pipe
-	for (i = 0; i < cmd_len; i++) {
-		if (pipe(fd + i * 2) < 0) {
-			perror("couldn't pipe");
-			exit(EXIT_FAILURE);
-		}
+	//先開好pipe
+	if(pipe(fd)<0) {
+		perror("couldn't pipe");
+		exit(EXIT_FAILURE);
 	}
-	//子進程每次執行一個指令
+	//進程每次執行一個指令
 	while (current != NULL) {
-		//if ((pid = fork()) == -1) {
-		//	perror("fork");
-		//	exit(EXIT_FAILURE);
-		//} else if (pid == 0) {
-			//還有後續指令，當前標準輸出定向到pipe的寫端
-			if (current->next != NULL) {
-				if (dup2(fd[j + 1], STDOUT_FILENO) < 0) {
-					perror("dup2");
-					exit(EXIT_FAILURE);
-				}
+		//還有後續指令，當前標準輸出定向到pipe的寫端
+		if (current->next != NULL) {
+			if (dup2(fd[1], STDOUT_FILENO) < 0) {
+				perror("dup2");
+				exit(EXIT_FAILURE);
 			}
-			//有前面指令，當前標準輸入定向到pipe的讀端
-			if (j != 0) {
-				if (dup2(fd[j - 2], 0) < 0) {
-					perror("dup2");
-					exit(EXIT_FAILURE);
-				}
+		}
+		//有前面指令，當前標準輸入定向到pipe的讀端
+		if (j != 0) {
+			if (dup2(fd[0], STDIN_FILENO) < 0) {
+				perror("dup2");
+				exit(EXIT_FAILURE);
 			}
-			//子程序關閉所有管線的端點
-			//for (i = 0; i < 2 * cmd_len; i++) {
-			//	close(fd[i]);
-			//}
-			//子程序執行指令
-			spawn_proc(current);
-			//if (execvp(current->args[0], current->args) < 0) {
-			//	perror((current->args[0]));
-			//	exit(EXIT_FAILURE);
-			//}
-		//} else if (pid < 0) {
-		//	perror("error");
-		//	exit(EXIT_FAILURE);
-		//}
-		//父程序移到下一個指令並且換到下一對pipe的兩端
+		}
+		//關閉所有管線的端點
+		close(fd[1]);
+		close(fd[0]);
+		//執行指令
+		spawn_proc(current);
 		current = current->next;
-		j += 2;
+		j += 1;
 	}
-	//父程序關掉所有pipe的兩端
-	//for (i = 0; i < 2 * cmd_len; i++) {
-	//	close(fd[i]);
-	//}
-	//等待n個子進程結束
-	//for (i = 0; i < cmd_len; i++) wait(NULL);
 	return 1;
 }
 // ===============================================================
