@@ -100,36 +100,39 @@ int spawn_proc(struct cmd_node *p)
 int fork_cmd_node(struct cmd *cmd)
 {
 	int j = 0;
-	int fd[2];
+	int cmd_num=cmd->pipe_num;
+	int fd[2*cmd_num];
 	struct cmd_node *current=cmd->head;
 	//先開好pipe
-	if(pipe(fd)<0) {
-		perror("couldn't pipe");
-		exit(EXIT_FAILURE);
+	for(int i=0;i<cmd_num;i++) {
+		if(pipe(fd+2*i)<0) {
+			perror("couldn't pipe");
+			exit(EXIT_FAILURE);
+		}
 	}
 	//進程每次執行一個指令
 	while (current != NULL) {
 		//還有後續指令，當前標準輸出定向到pipe的寫端
 		if (current->next != NULL) {
-			if (dup2(fd[1], STDOUT_FILENO) < 0) {
+			if (dup2(fd[j+1], STDOUT_FILENO) < 0) {
 				perror("dup2");
 				exit(EXIT_FAILURE);
 			}
 		}
 		//有前面指令，當前標準輸入定向到pipe的讀端
 		if (j != 0) {
-			if (dup2(fd[0], STDIN_FILENO) < 0) {
+			if (dup2(fd[j-2], STDIN_FILENO) < 0) {
 				perror("dup2");
 				exit(EXIT_FAILURE);
 			}
 		}
-		//關閉所有管線的端點
-		close(fd[1]);
-		close(fd[0]);
 		//執行指令
 		spawn_proc(current);
 		current = current->next;
-		j += 1;
+		j += 2;
+	}
+	for(int i=0;i<2*cmd_num;i++) {
+		close(fd[i]);
 	}
 	return 1;
 }
