@@ -99,7 +99,7 @@ int spawn_proc(struct cmd_node *p)
  */
 int fork_cmd_node(struct cmd *cmd)
 {
-	int j = 0;
+	int j = 0,index0=0,index1=0;
 	int cmd_num=cmd->pipe_num;
 	int fd[2*cmd_num];
 	struct cmd_node *current=cmd->head;
@@ -118,6 +118,7 @@ int fork_cmd_node(struct cmd *cmd)
 				perror("dup2");
 				exit(EXIT_FAILURE);
 			}
+			index0 = j+1;
 		}
 		//有前面指令，當前標準輸入定向到pipe的讀端
 		if (j != 0) {
@@ -125,14 +126,14 @@ int fork_cmd_node(struct cmd *cmd)
 				perror("dup2");
 				exit(EXIT_FAILURE);
 			}
+			index1 = j-2;
 		}
+		close(fd[index0]);
+		close(fd[index1]);
 		//執行指令
 		spawn_proc(current);
 		current = current->next;
 		j += 2;
-	}
-	for(int i=0;i<2*cmd_num;i++) {
-		close(fd[i]);
 	}
 	return 1;
 }
