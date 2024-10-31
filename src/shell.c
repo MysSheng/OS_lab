@@ -99,7 +99,34 @@ int spawn_proc(struct cmd_node *p)
  */
 int fork_cmd_node(struct cmd *cmd)
 {
-	return 1;
+	//給pipe分配通道
+	int fd[2];
+	pid_t pid;
+	int last_status=0;
+	struct cmd_node *current=cmd->head;
+
+	while(current!=NULL) {
+		pid=fork();
+		if (pid < 0) {
+			perror("Fork failed");
+			exit(EXIT_FAILURE);
+		}else if (pid == 0) {
+			//子程序
+			dup2(last_status, STDIN_FILENO);
+			if(current->next!=NULL) {
+				dup2(fd[1], STDOUT_FILENO);
+			}
+			close(fd[0]);
+			execvp(current->args[0], current->args);
+			exit(EXIT_FAILURE);
+		}else {
+			wait(NULL); 		/* Collect childs */
+			close(fd[1]);
+			last_status = fd[0];
+			current=current->next;
+		}
+	}
+
 }
 // ===============================================================
 
