@@ -137,11 +137,11 @@ int fork_cmd_node(struct cmd *cmd)
 				close(fd[i]);
 			}
 			//子程序執行指令
-			spawn_proc(current);
-			//if (execvp(current->args[0], current->args) < 0) {
-			//	perror((current->args[0]));
-			//	exit(EXIT_FAILURE);
-			//}
+			//spawn_proc(current);
+			if (execvp(current->args[0], current->args) < 0) {
+				perror((current->args[0]));
+				exit(EXIT_FAILURE);
+			}
 		} else if (pid < 0) {
 			perror("error");
 			exit(EXIT_FAILURE);
