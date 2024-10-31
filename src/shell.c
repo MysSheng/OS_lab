@@ -112,7 +112,7 @@ int fork_cmd_node(struct cmd *cmd)
 			exit(EXIT_FAILURE);
 		}
 	}
-	while (*cmd != NULL) {
+	while (current != NULL) {
 		if ((pid = fork()) == -1) {
 			perror("fork");
 			exit(1);
