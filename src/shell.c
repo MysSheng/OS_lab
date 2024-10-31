@@ -104,7 +104,6 @@ int fork_cmd_node(struct cmd *cmd)
 	int cmd_len = cmd->pipe_num;
 	int fd[2 * cmd_len];
 	struct cmd_node *current=cmd->head;
-
 	//先開好n個pipe
 	for (i = 0; i < cmd_len; i++) {
 		if (pipe(fd + i * 2) < 0) {
@@ -136,8 +135,7 @@ int fork_cmd_node(struct cmd *cmd)
 			for (i = 0; i < 2 * cmd_len; i++) {
 				close(fd[i]);
 			}
-			//子程序執行指令
-			//spawn_proc(current);
+			//呼叫spawn_proc並結束子程序
 			exit(spawn_proc(current));
 		} else if (pid < 0) {
 			perror("error");
